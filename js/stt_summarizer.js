@@ -33,10 +33,7 @@ class STTSummarizer {
                 const transcript = event.results[i][0].transcript;
                 if (event.results[i].isFinal) {
                     if (i >= this.lastProcessedIndex) {
-                        const trimmed = transcript.trim();
-                        if (trimmed && !this.isDuplicatePhrase(trimmed)) {
-                            this.transcriptBuffer.push(trimmed);
-                        }
+                        this.pushOrUpdateTranscriptBuffer(transcript);
                         this.lastProcessedIndex = i + 1;
                     }
                 } else {
@@ -45,8 +42,22 @@ class STTSummarizer {
             }
 
             if (this.onLiveTranscriptCallback) {
-                const currentFull = this.getBufferedText() + (interimTranscript ? ' ' + interimTranscript : '');
-                this.onLiveTranscriptCallback(currentFull);
+                let liveFull = this.getBufferedText();
+                const interimTrimmed = interimTranscript.trim();
+                if (interimTrimmed) {
+                    if (liveFull) {
+                        const cleanLive = liveFull.replace(/\s+/g, '');
+                        const cleanInterim = interimTrimmed.replace(/\s+/g, '');
+                        if (cleanInterim.startsWith(cleanLive)) {
+                            liveFull = interimTrimmed;
+                        } else if (!cleanLive.endsWith(cleanInterim)) {
+                            liveFull += ' ' + interimTrimmed;
+                        }
+                    } else {
+                        liveFull = interimTrimmed;
+                    }
+                }
+                this.onLiveTranscriptCallback(liveFull);
             }
         };
 
@@ -66,10 +77,45 @@ class STTSummarizer {
         };
     }
 
-    isDuplicatePhrase(text) {
-        if (this.transcriptBuffer.length === 0) return false;
-        const lastText = this.transcriptBuffer[this.transcriptBuffer.length - 1];
-        return lastText === text;
+    pushOrUpdateTranscriptBuffer(text) {
+        const trimmed = text.trim();
+        if (!trimmed) return;
+
+        if (this.transcriptBuffer.length === 0) {
+            this.transcriptBuffer.push(trimmed);
+            return;
+        }
+
+        const lastIdx = this.transcriptBuffer.length - 1;
+        const lastText = this.transcriptBuffer[lastIdx];
+
+        // 1. 완전 동일 시 무시
+        if (lastText === trimmed) return;
+
+        // 2. 새 인식 결과(trimmed)가 기존 결과(lastText)를 확장/포함하는 경우 -> 기존 결과 교체 (예: "1" -> "1 2" -> "1 2 3 4")
+        if (trimmed.startsWith(lastText)) {
+            this.transcriptBuffer[lastIdx] = trimmed;
+            return;
+        }
+
+        // 3. 기존 결과가 새 인식 결과를 포함하는 경우 -> 무시
+        if (lastText.startsWith(trimmed)) {
+            return;
+        }
+
+        // 4. 공백 제거 후 비교 (단어 단위 조립 보정)
+        const cleanLast = lastText.replace(/\s+/g, '');
+        const cleanTrimmed = trimmed.replace(/\s+/g, '');
+        if (cleanTrimmed.startsWith(cleanLast)) {
+            this.transcriptBuffer[lastIdx] = trimmed;
+            return;
+        }
+        if (cleanLast.startsWith(cleanTrimmed)) {
+            return;
+        }
+
+        // 5. 중복 없이 독립된 새 문장이면 버퍼에 추가
+        this.transcriptBuffer.push(trimmed);
     }
 
     startListening(onLiveTranscript) {
