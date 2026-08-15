@@ -24,24 +24,28 @@ class STTSummarizer {
         this.recognition.interimResults = true;
         this.recognition.lang = 'ko-KR';
 
+        this.lastProcessedIndex = 0;
+
         this.recognition.onresult = (event) => {
             let interimTranscript = '';
-            let finalTranscript = '';
 
             for (let i = event.resultIndex; i < event.results.length; ++i) {
+                const transcript = event.results[i][0].transcript;
                 if (event.results[i].isFinal) {
-                    finalTranscript += event.results[i][0].transcript + ' ';
+                    if (i >= this.lastProcessedIndex) {
+                        const trimmed = transcript.trim();
+                        if (trimmed && !this.isDuplicatePhrase(trimmed)) {
+                            this.transcriptBuffer.push(trimmed);
+                        }
+                        this.lastProcessedIndex = i + 1;
+                    }
                 } else {
-                    interimTranscript += event.results[i][0].transcript;
+                    interimTranscript += transcript;
                 }
             }
 
-            if (finalTranscript.trim()) {
-                this.transcriptBuffer.push(finalTranscript.trim());
-            }
-
             if (this.onLiveTranscriptCallback) {
-                const currentFull = this.getBufferedText() + ' ' + interimTranscript;
+                const currentFull = this.getBufferedText() + (interimTranscript ? ' ' + interimTranscript : '');
                 this.onLiveTranscriptCallback(currentFull);
             }
         };
@@ -62,10 +66,17 @@ class STTSummarizer {
         };
     }
 
+    isDuplicatePhrase(text) {
+        if (this.transcriptBuffer.length === 0) return false;
+        const lastText = this.transcriptBuffer[this.transcriptBuffer.length - 1];
+        return lastText === text;
+    }
+
     startListening(onLiveTranscript) {
         if (!this.recognition) return false;
         this.onLiveTranscriptCallback = onLiveTranscript;
         this.transcriptBuffer = [];
+        this.lastProcessedIndex = 0;
         this.isRecognizing = true;
         try {
             this.recognition.start();
