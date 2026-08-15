@@ -21,14 +21,12 @@ class STTSummarizer {
 
         this.recognition = new SpeechRecognition();
         this.recognition.continuous = true;
-        this.recognition.interimResults = true;
+        this.recognition.interimResults = false; // 실시간 중간 변환 끄기 (녹음 완료 후 일괄 변환)
         this.recognition.lang = 'ko-KR';
 
         this.lastProcessedIndex = 0;
 
         this.recognition.onresult = (event) => {
-            let interimTranscript = '';
-
             for (let i = event.resultIndex; i < event.results.length; ++i) {
                 const transcript = event.results[i][0].transcript;
                 if (event.results[i].isFinal) {
@@ -36,28 +34,7 @@ class STTSummarizer {
                         this.pushOrUpdateTranscriptBuffer(transcript);
                         this.lastProcessedIndex = i + 1;
                     }
-                } else {
-                    interimTranscript += transcript;
                 }
-            }
-
-            if (this.onLiveTranscriptCallback) {
-                let liveFull = this.getBufferedText();
-                const interimTrimmed = interimTranscript.trim();
-                if (interimTrimmed) {
-                    if (liveFull) {
-                        const cleanLive = liveFull.replace(/\s+/g, '');
-                        const cleanInterim = interimTrimmed.replace(/\s+/g, '');
-                        if (cleanInterim.startsWith(cleanLive)) {
-                            liveFull = interimTrimmed;
-                        } else if (!cleanLive.endsWith(cleanInterim)) {
-                            liveFull += ' ' + interimTrimmed;
-                        }
-                    } else {
-                        liveFull = interimTrimmed;
-                    }
-                }
-                this.onLiveTranscriptCallback(liveFull);
             }
         };
 

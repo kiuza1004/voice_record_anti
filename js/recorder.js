@@ -41,13 +41,12 @@ class HourlyAutoRecorder {
             this.startTime = new Date();
             this.elapsedSeconds = 0;
 
-            // STT 실시간 모니터링 시작
-            window.sttSummarizer.startListening((liveText) => {
-                const liveBox = document.getElementById('live-transcript');
-                if (liveBox) {
-                    liveBox.innerText = liveText || '말소리를 감지하는 중입니다...';
-                }
-            });
+            // STT 백그라운드 모니터링 시작 (중간 실시간 변환 없이 녹음 종료 후 일괄 출력)
+            window.sttSummarizer.startListening();
+            const liveBox = document.getElementById('live-transcript');
+            if (liveBox) {
+                liveBox.innerHTML = '<p class="placeholder-text" style="color: #3b82f6;"><i class="fa-solid fa-microphone-lines pulse-icon"></i> 음성 녹음 진행 중입니다... (녹음 종료 후 텍스트로 한꺼번에 변환됩니다)</p>';
+            }
 
             // 타이머 루프 시작
             this.timerId = setInterval(() => this.tick(), 1000);
@@ -81,8 +80,14 @@ class HourlyAutoRecorder {
         const endTime = new Date();
         const startTime = this.startTime || new Date(endTime.getTime() - (this.intervalSeconds * 1000));
 
-        // STT 텍스트 가져오기 및 중지 후 재생성
+        // STT 전체 텍스트 일괄 획득
         const rawText = window.sttSummarizer.getBufferedText();
+        
+        // 녹음 완료 시점에 최종 전체 텍스트를 화면에 출력
+        const liveBox = document.getElementById('live-transcript');
+        if (liveBox) {
+            liveBox.innerText = rawText ? `[녹음 완료 한꺼번에 변환된 텍스트]\n${rawText}` : '녹음된 텍스트가 없습니다.';
+        }
         
         // 오디오 블롭 생성 (onstop 비동기 이벤트 대기하여 데이터 유실 방지)
         let audioBlob = null;
@@ -136,10 +141,7 @@ class HourlyAutoRecorder {
                 this.mediaRecorder.start();
             }
 
-            window.sttSummarizer.startListening((liveText) => {
-                const liveBox = document.getElementById('live-transcript');
-                if (liveBox) liveBox.innerText = liveText;
-            });
+            window.sttSummarizer.startListening();
         }
     }
 
