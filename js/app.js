@@ -132,11 +132,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             let timeSlotsHtml = '';
             dayLogs.forEach(slot => {
                 let audioBtnHtml = '';
-                if (slot.audioBlob) {
+                if (slot.audioBlob && slot.audioBlob.size > 0) {
                     const audioUrl = URL.createObjectURL(slot.audioBlob);
                     audioBtnHtml = `
                         <div class="slot-audio-controls">
-                            <button class="btn-play-audio" onclick="playAudio('${audioUrl}')">
+                            <button class="btn-play-audio" onclick="playAudio('${audioUrl}', this)">
                                 <i class="fa-solid fa-play"></i>
                             </button>
                             <span style="font-size: 0.75rem; color: #94a3b8;">오디오 들어보기</span>
@@ -188,6 +188,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const query = qaInput.value;
         if (!query.trim()) return;
 
+        // 기존 말하기 중지
+        if (window.qaAssistant.isSpeaking()) {
+            window.qaAssistant.stopSpeaking();
+            resetTtsButton();
+        }
+
         const result = await window.qaAssistant.searchAndAnswer(query);
         currentAnswerText = result.answer;
 
@@ -199,11 +205,35 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (e.key === 'Enter') btnQaAsk.click();
     });
 
+    // TTS 음성 설명 (시작 / 종료 토글 지원)
     btnSpeakAnswer.addEventListener('click', () => {
-        if (currentAnswerText) {
-            window.qaAssistant.speak(currentAnswerText);
+        if (!currentAnswerText) return;
+
+        if (window.qaAssistant.isSpeaking()) {
+            window.qaAssistant.stopSpeaking();
+            resetTtsButton();
+        } else {
+            window.qaAssistant.speak(
+                currentAnswerText,
+                () => {
+                    // 말하기 시작 시 버튼 UI 변경 (종료 버튼)
+                    btnSpeakAnswer.innerHTML = '<i class="fa-solid fa-square"></i> 말하기 중지';
+                    btnSpeakAnswer.style.backgroundColor = '#ef4444';
+                    btnSpeakAnswer.style.borderColor = '#ef4444';
+                },
+                () => {
+                    // 말하기 완료 또는 오류 시 원복
+                    resetTtsButton();
+                }
+            );
         }
     });
+
+    function resetTtsButton() {
+        btnSpeakAnswer.innerHTML = '<i class="fa-solid fa-volume-high"></i> 말로 설명 듣기 (TTS)';
+        btnSpeakAnswer.style.backgroundColor = '';
+        btnSpeakAnswer.style.borderColor = '';
+    }
 
     btnQaMic.addEventListener('click', () => {
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -263,9 +293,44 @@ document.addEventListener('DOMContentLoaded', async () => {
         dayCard.classList.toggle('open');
     };
 
-    window.playAudio = function(url) {
+    let activeAudio = null;
+    let activeAudioBtn = null;
+
+    window.playAudio = function(url, btnElem) {
+        // 이미 다른 오디오가 재생 중이면 중지
+        if (activeAudio) {
+            activeAudio.pause();
+            if (activeAudioBtn) {
+                activeAudioBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+            }
+            if (activeAudioBtn === btnElem) {
+                activeAudio = null;
+                activeAudioBtn = null;
+                return;
+            }
+        }
+
         const audio = new Audio(url);
-        audio.play();
+        activeAudio = audio;
+        activeAudioBtn = btnElem;
+
+        if (btnElem) {
+            btnElem.innerHTML = '<i class="fa-solid fa-pause"></i>';
+        }
+
+        audio.play().catch(err => {
+            console.error('오디오 재생 실패:', err);
+            alert('오디오를 재생하는 데 실패했습니다. 오디오 브라우저 호환성을 확인해 주세요.');
+            if (btnElem) btnElem.innerHTML = '<i class="fa-solid fa-play"></i>';
+            activeAudio = null;
+            activeAudioBtn = null;
+        });
+
+        audio.onended = () => {
+            if (btnElem) btnElem.innerHTML = '<i class="fa-solid fa-play"></i>';
+            activeAudio = null;
+            activeAudioBtn = null;
+        };
     };
 
     window.setQuickQuery = function(text) {

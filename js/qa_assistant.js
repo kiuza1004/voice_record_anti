@@ -74,23 +74,38 @@ class LifeLogQAAssistant {
     /**
      * 답변 내용을 말로 설명해주는 TTS (Text-to-Speech) 기능
      * @param {string} text 읽어줄 텍스트
+     * @param {Function} onStart 말하기 시작 시 콜백
+     * @param {Function} onEnd 말하기 종료/중지 시 콜백
      */
-    speak(text) {
+    speak(text, onStart = null, onEnd = null) {
         if (!this.synth) {
             alert('이 브라우저는 음성 합성(TTS) 기능을 지원하지 않습니다.');
             return;
         }
 
         // 기존 읽기 중지
-        this.synth.cancel();
+        this.stopSpeaking();
 
         // 특수문자 및 마크다운 기호 제거
-        const cleanText = text.replace(/[*📌💡🔍📅]/g, '').trim();
+        const cleanText = text.replace(/[*📌💡🔍📅#-]/g, '').trim();
+        if (!cleanText) return;
 
         const utterance = new SpeechSynthesisUtterance(cleanText);
         utterance.lang = 'ko-KR';
         utterance.rate = 1.0;
         utterance.pitch = 1.0;
+
+        utterance.onstart = () => {
+            if (onStart) onStart();
+        };
+
+        utterance.onend = () => {
+            if (onEnd) onEnd();
+        };
+
+        utterance.onerror = () => {
+            if (onEnd) onEnd();
+        };
 
         this.synth.speak(utterance);
     }
@@ -99,6 +114,10 @@ class LifeLogQAAssistant {
         if (this.synth) {
             this.synth.cancel();
         }
+    }
+
+    isSpeaking() {
+        return this.synth ? this.synth.speaking : false;
     }
 }
 

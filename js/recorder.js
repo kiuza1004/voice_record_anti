@@ -84,10 +84,17 @@ class HourlyAutoRecorder {
         // STT 텍스트 가져오기 및 중지 후 재생성
         const rawText = window.sttSummarizer.getBufferedText();
         
-        // 오디오 블롭 생성
+        // 오디오 블롭 생성 (onstop 비동기 이벤트 대기하여 데이터 유실 방지)
         let audioBlob = null;
         if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
-            this.mediaRecorder.stop();
+            audioBlob = await new Promise((resolve) => {
+                this.mediaRecorder.onstop = () => {
+                    const blob = new Blob(this.audioChunks, { type: 'audio/webm' });
+                    resolve(blob);
+                };
+                this.mediaRecorder.stop();
+            });
+        } else if (this.audioChunks.length > 0) {
             audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
         }
 
