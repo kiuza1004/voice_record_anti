@@ -48,12 +48,37 @@ class LifeLogStorage {
                 rawText,
                 summary: summary.substring(0, 200), // 200자 이내 보장
                 audioBlob,
+                isFavorite: false,
                 timestamp: Date.now()
             };
 
             const request = store.add(item);
             request.onsuccess = () => resolve(request.result);
             request.onerror = (e) => reject(e.target.error);
+        });
+    }
+
+    // 즐겨찾기 상태 토글 기능
+    async toggleFavorite(id) {
+        if (!this.db) await this.init();
+
+        return new Promise((resolve, reject) => {
+            const tx = this.db.transaction('logs', 'readwrite');
+            const store = tx.objectStore('logs');
+            const getReq = store.get(id);
+
+            getReq.onsuccess = () => {
+                const item = getReq.result;
+                if (!item) {
+                    reject('Item not found');
+                    return;
+                }
+                item.isFavorite = !item.isFavorite;
+                const updateReq = store.put(item);
+                updateReq.onsuccess = () => resolve(item.isFavorite);
+                updateReq.onerror = (e) => reject(e.target.error);
+            };
+            getReq.onerror = (e) => reject(e.target.error);
         });
     }
 

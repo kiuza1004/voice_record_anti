@@ -625,3 +625,43 @@ body {
     max-height: 200px;
     overflow-y: auto;
 }
+
+/* 신규 기능 3가지 스타일 (키워드 태그, 즐겨찾기, 공유) */
+.day-keywords {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+}
+
+.keyword-tag {
+    font-size: 0.7rem;
+    color: #38bdf8;
+    background-color: rgba(56, 189, 248, 0.1);
+    padding: 1px 6px;
+    border-radius: 6px;
+}
+
+.slot-action-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-icon-action {
+    background: none;
+    border: none;
+    font-size: 0.95rem;
+    cursor: pointer;
+    padding: 4px;
+    color: var(--text-secondary);
+    transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.btn-icon-action:hover {
+    transform: scale(1.15);
+}
+
+.btn-icon-action.is-fav {
+    color: #f59e0b !important;
+}

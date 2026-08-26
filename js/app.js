@@ -104,6 +104,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderHistoryList();
     };
 
+    const btnToggleFavFilter = document.getElementById('btn-toggle-fav-filter');
+    let isFavFilterActive = false;
+
     // --- 일자별 카테고리 렌더링 ---
     async function renderHistoryList(filterDate = null) {
         const groupedLogs = await window.lifeLogStorage.getGroupedByDate();
@@ -122,12 +125,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
+        let renderedDays = 0;
+
         dateKeys.forEach((dateStr, index) => {
             if (filterDate && dateStr !== filterDate) return;
 
-            const dayLogs = groupedLogs[dateStr];
+            let dayLogs = groupedLogs[dateStr];
+            if (isFavFilterActive) {
+                dayLogs = dayLogs.filter(slot => slot.isFavorite);
+                if (dayLogs.length === 0) return;
+            }
+
+            renderedDays++;
             const dayCard = document.createElement('div');
             dayCard.className = `day-card ${index === 0 ? 'open' : ''}`;
+
+            // 하루 전체 텍스트 수집하여 주요 키워드 태그 3개 추출 (비용 0원)
+            const fullDayText = dayLogs.map(l => l.summary + " " + l.rawText).join(' ');
+            const topKeywords = window.sttSummarizer.extractTopKeywords(fullDayText);
+            const keywordTagsHtml = topKeywords.map(k => `<span class="keyword-tag">${k}</span>`).join(' ');
 
             let timeSlotsHtml = '';
             dayLogs.forEach(slot => {
@@ -144,11 +160,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                     `;
                 }
 
+                const isFavClass = slot.isFavorite ? 'is-fav' : '';
+                const favStarIcon = slot.isFavorite ? 'fa-solid fa-star' : 'fa-regular fa-star';
+
                 timeSlotsHtml += `
                     <div class="time-slot-item">
                         <div class="slot-header">
                             <span class="slot-time"><i class="fa-regular fa-clock"></i> ${slot.timeRange}</span>
-                            <span style="font-size: 0.7rem; color: #64748b;">(200자 요약)</span>
+                            <div class="slot-action-bar">
+                                <button class="btn-icon-action ${isFavClass}" title="즐겨찾기 토글" onclick="toggleFavoriteLog(${slot.id}, this)">
+                                    <i class="${favStarIcon}"></i>
+                                </button>
+                                <button class="btn-icon-action" title="텍스트 카카오톡/클립보드 공유" onclick="shareLogSlot('${escapeHtml(slot.dateString)}', '${escapeHtml(slot.timeRange)}', '${escapeHtml(slot.summary)}')">
+                                    <i class="fa-solid fa-share-nodes"></i>
+                                </button>
+                            </div>
                         </div>
                         <div class="slot-summary">${escapeHtml(slot.summary)}</div>
                         ${audioBtnHtml}
@@ -166,11 +192,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             dayCard.innerHTML = `
                 <div class="day-header" onclick="toggleDayCard(this)">
-                    <div class="day-title">
-                        <i class="fa-solid fa-folder"></i>
-                        <span>${dateStr}</span>
+                    <div class="day-title-wrapper">
+                        <div class="day-title">
+                            <i class="fa-solid fa-folder"></i>
+                            <span>${dateStr}</span>
+                        </div>
+                        <div class="day-keywords">${keywordTagsHtml}</div>
                     </div>
-                    <span class="day-count">${dayLogs.length}개 시간대 요약</span>
+                    <span class="day-count">${dayLogs.length}개 요약</span>
                 </div>
                 <div class="time-slot-list">
                     ${timeSlotsHtml}
@@ -179,6 +208,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             historyListContainer.appendChild(dayCard);
         });
+
+        if (renderedDays === 0 && isFavFilterActive) {
+            historyListContainer.innerHTML = `
+                <div class="card" style="text-align: center; color: #64748b; padding: 30px;">
+                    <i class="fa-solid fa-star" style="font-size: 2rem; color: #f59e0b; margin-bottom: 8px;"></i>
+                    <p>즐겨찾기 지정된 기록이 없습니다.</p>
+                </div>
+            `;
+        }
     }
 
     // 날짜 필터 이벤트
@@ -188,7 +226,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     btnResetFilter.addEventListener('click', () => {
         historyDatePicker.value = '';
+        isFavFilterActive = false;
+        btnToggleFavFilter.classList.remove('btn-accent');
+        btnToggleFavFilter.classList.add('btn-secondary');
         renderHistoryList();
+    });
+
+    btnToggleFavFilter.addEventListener('click', () => {
+        isFavFilterActive = !isFavFilterActive;
+        if (isFavFilterActive) {
+            btnToggleFavFilter.classList.remove('btn-secondary');
+            btnToggleFavFilter.classList.add('btn-accent');
+        } else {
+            btnToggleFavFilter.classList.remove('btn-accent');
+            btnToggleFavFilter.classList.add('btn-secondary');
+        }
+        renderHistoryList(historyDatePicker.value);
     });
 
     // --- Q&A 및 검색 / TTS ---
@@ -352,6 +405,42 @@ document.addEventListener('DOMContentLoaded', async () => {
             activeAudio = null;
             activeAudioBtn = null;
         };
+    };
+
+    window.toggleFavoriteLog = async function(id, btnElem) {
+        try {
+            const isFav = await window.lifeLogStorage.toggleFavorite(id);
+            const icon = btnElem.querySelector('i');
+            if (isFav) {
+                btnElem.classList.add('is-fav');
+                icon.className = 'fa-solid fa-star';
+            } else {
+                btnElem.classList.remove('is-fav');
+                icon.className = 'fa-regular fa-star';
+            }
+        } catch (e) {
+            console.error('즐겨찾기 토글 실패:', e);
+        }
+    };
+
+    window.shareLogSlot = function(dateStr, timeRange, summary) {
+        const shareText = `[Voice Life Log 일상 기록]\n📅 ${dateStr} (${timeRange})\n💡 요약: ${summary}`;
+
+        if (navigator.share) {
+            navigator.share({
+                title: 'Voice Life Log 기록',
+                text: shareText,
+                url: window.location.href
+            }).catch(e => console.log('Share error:', e));
+        } else if (navigator.clipboard) {
+            navigator.clipboard.writeText(shareText).then(() => {
+                alert('일상 기록 요약이 클립보드에 복사되었습니다!\n원하는 곳(카카오톡, 메시지 등)에 붙여넣어 공유하세요.');
+            }).catch(() => {
+                alert('복사 실패');
+            });
+        } else {
+            alert(shareText);
+        }
     };
 
     window.setQuickQuery = function(text) {

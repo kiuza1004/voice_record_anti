@@ -1,0 +1,17 @@
+{
+  "name": "Voice Life Log",
+  "short_name": "LifeLog",
+  "description": "일상 자동 1시간 단위 녹음 & 200자 정리 어플리케이션",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#0f172a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/svgs/solid/microphone-lines.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}

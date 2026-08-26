@@ -210,6 +210,35 @@ class STTSummarizer {
         const data = await response.json();
         return data.candidates[0].content.parts[0].text;
     }
+
+    /**
+     * 로컬 키워드 자동 추출 (비용 0원)
+     * @param {string} text 일상 기록 텍스트
+     * @returns {Array<string>} 추출된 주요 키워드 배열 (예: ['#회의', '#식사'])
+     */
+    extractTopKeywords(text) {
+        if (!text || text.trim().length === 0) return [];
+
+        // 불용어 (조사, 어미, 특수문자 등)
+        const stopWords = new Set([
+            '것', '수', '등', '를', '을', '이', '가', '은', '는', '에', '와', '과', '으로', '로',
+            '도', '하고', '입니다', '합니다', '있습니다', '없습니다', '오늘', '녹음', '소리', '대화',
+            '완료', '결과', '보관', '통해', '해서', '에서', '그리고', '하지만', '또는', '저희', '우리'
+        ]);
+
+        const words = text.replace(/[*📌💡🔍📅#\-!?,.()"]/g, ' ')
+            .split(/\s+/)
+            .map(w => w.trim())
+            .filter(w => w.length >= 2 && !stopWords.has(w));
+
+        const freq = {};
+        words.forEach(w => {
+            freq[w] = (freq[w] || 0) + 1;
+        });
+
+        const sorted = Object.keys(freq).sort((a, b) => freq[b] - freq[a]);
+        return sorted.slice(0, 3).map(k => `#${k}`);
+    }
 }
 
 window.sttSummarizer = new STTSummarizer();
