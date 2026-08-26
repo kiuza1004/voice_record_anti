@@ -152,6 +152,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </div>
                         <div class="slot-summary">${escapeHtml(slot.summary)}</div>
                         ${audioBtnHtml}
+                        <div class="slot-raw-toggle-container">
+                            <button class="btn-toggle-raw" onclick="toggleRawText(this)">
+                                <i class="fa-solid fa-file-lines"></i> 녹음 전체 텍스트 나열 보기
+                            </button>
+                            <div class="slot-raw-text" style="display: none;">
+                                ${escapeHtml(slot.rawText || '녹음된 원본 텍스트가 없습니다.')}
+                            </div>
+                        </div>
                     </div>
                 `;
             });
@@ -291,6 +299,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.toggleDayCard = function(headerElem) {
         const dayCard = headerElem.parentElement;
         dayCard.classList.toggle('open');
+    };
+
+    window.toggleRawText = function(btnElem) {
+        const rawBox = btnElem.nextElementSibling;
+        if (!rawBox) return;
+        
+        if (rawBox.style.display === 'none' || !rawBox.style.display) {
+            rawBox.style.display = 'block';
+            btnElem.innerHTML = '<i class="fa-solid fa-chevron-up"></i> 전체 텍스트 접기';
+        } else {
+            rawBox.style.display = 'none';
+            btnElem.innerHTML = '<i class="fa-solid fa-file-lines"></i> 녹음 전체 텍스트 나열 보기';
+        }
     };
 
     let activeAudio = null;

@@ -587,3 +587,41 @@ body {
     color: var(--accent-color);
     font-weight: 700;
 }
+
+/* 전체 원본 텍스트 나열 스타일 */
+.slot-raw-toggle-container {
+    margin-top: 8px;
+    border-top: 1px dashed var(--border-color);
+    padding-top: 8px;
+}
+
+.btn-toggle-raw {
+    background: none;
+    border: none;
+    color: var(--accent-color);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 0;
+}
+
+.btn-toggle-raw:hover {
+    text-decoration: underline;
+}
+
+.slot-raw-text {
+    margin-top: 6px;
+    background-color: #0f172a;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 10px;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    color: #cbd5e1;
+    white-space: pre-wrap;
+    max-height: 200px;
+    overflow-y: auto;
+}
