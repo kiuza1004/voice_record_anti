@@ -21,12 +21,14 @@ class STTSummarizer {
 
         this.recognition = new SpeechRecognition();
         this.recognition.continuous = true;
-        this.recognition.interimResults = false; // 실시간 중간 변환 끄기 (녹음 완료 후 일괄 변환)
+        this.recognition.interimResults = true; // 백그라운드 정밀 캡처를 위해 true 설정
         this.recognition.lang = 'ko-KR';
 
         this.lastProcessedIndex = 0;
 
         this.recognition.onresult = (event) => {
+            let latestInterim = '';
+
             for (let i = event.resultIndex; i < event.results.length; ++i) {
                 const transcript = event.results[i][0].transcript;
                 if (event.results[i].isFinal) {
@@ -34,7 +36,14 @@ class STTSummarizer {
                         this.pushOrUpdateTranscriptBuffer(transcript);
                         this.lastProcessedIndex = i + 1;
                     }
+                } else {
+                    latestInterim += transcript;
                 }
+            }
+
+            // 중간 인식 텍스트도 버퍼에 누적 보정
+            if (latestInterim.trim()) {
+                this.pushOrUpdateTranscriptBuffer(latestInterim);
             }
         };
 
@@ -129,10 +138,14 @@ class STTSummarizer {
     /**
      * 200자 이내 요약 생성 기능
      * @param {string} rawText 원본 녹음 텍스트
+     * @param {boolean} hasAudioBlob 오디오 파일 존재 여부
      * @returns {Promise<string>} 200자 이내 요약문
      */
-    async summarizeText(rawText) {
+    async summarizeText(rawText, hasAudioBlob = false) {
         if (!rawText || rawText.trim().length === 0) {
+            if (hasAudioBlob) {
+                return "🎵 [음성 오디오 저장 완료] 텍스트 변환 결과는 없으나 음성 오디오가 정상 보관되었습니다. (하단 오디오 들어보기 클릭)";
+            }
             return "녹음된 일상 대화나 소리가 없습니다.";
         }
 

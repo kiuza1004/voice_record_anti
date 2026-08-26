@@ -110,8 +110,9 @@ class HourlyAutoRecorder {
         const formatTime = (d) => d.toTimeString().substring(0, 5);
         const timeRange = `${formatTime(startTime)} ~ ${formatTime(endTime)}`;
 
-        // 200자 이내 요약 생성
-        const summary = await window.sttSummarizer.summarizeText(rawText);
+        // 200자 이내 요약 생성 (오디오 보관 여부 함께 전달)
+        const hasAudio = !!(audioBlob && audioBlob.size > 0);
+        const summary = await window.sttSummarizer.summarizeText(rawText, hasAudio);
 
         // IndexedDB 보관
         await window.lifeLogStorage.addLogEntry({
