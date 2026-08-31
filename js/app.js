@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 <button class="btn-icon-action ${isFavClass}" title="즐겨찾기 토글" onclick="toggleFavoriteLog(${slot.id}, this)">
                                     <i class="${favStarIcon}"></i>
                                 </button>
-                                <button class="btn-icon-action" title="텍스트 카카오톡/클립보드 공유" onclick="shareLogSlot('${escapeHtml(slot.dateString)}', '${escapeHtml(slot.timeRange)}', '${escapeHtml(slot.summary)}')">
+                                <button class="btn-icon-action" title="텍스트 카카오톡/클립보드 공유" onclick="shareLogSlot(${slot.id})">
                                     <i class="fa-solid fa-share-nodes"></i>
                                 </button>
                             </div>
@@ -423,23 +423,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    window.shareLogSlot = function(dateStr, timeRange, summary) {
-        const shareText = `[Voice Life Log 일상 기록]\n📅 ${dateStr} (${timeRange})\n💡 요약: ${summary}`;
+    window.shareLogSlot = async function(id) {
+        try {
+            const logs = await window.lifeLogStorage.getAllLogs();
+            const slot = logs.find(l => l.id === id);
+            if (!slot) return;
 
-        if (navigator.share) {
-            navigator.share({
-                title: 'Voice Life Log 기록',
-                text: shareText,
-                url: window.location.href
-            }).catch(e => console.log('Share error:', e));
-        } else if (navigator.clipboard) {
-            navigator.clipboard.writeText(shareText).then(() => {
-                alert('일상 기록 요약이 클립보드에 복사되었습니다!\n원하는 곳(카카오톡, 메시지 등)에 붙여넣어 공유하세요.');
-            }).catch(() => {
-                alert('복사 실패');
-            });
-        } else {
-            alert(shareText);
+            const shareText = `[Voice Life Log 일상 기록]\n📅 ${slot.dateString} (${slot.timeRange})\n💡 요약: ${slot.summary}`;
+
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Voice Life Log 기록',
+                    text: shareText,
+                    url: window.location.href
+                }).catch(e => console.log('Share error:', e));
+            } else if (navigator.clipboard) {
+                navigator.clipboard.writeText(shareText).then(() => {
+                    alert('일상 기록 요약이 클립보드에 복사되었습니다!\n원하는 곳(카카오톡, 메시지 등)에 붙여넣어 공유하세요.');
+                }).catch(() => {
+                    alert('복사 실패');
+                });
+            } else {
+                alert(shareText);
+            }
+        } catch (e) {
+            console.error('공유 중 오류 발생:', e);
         }
     };
 

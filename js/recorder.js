@@ -103,8 +103,11 @@ class HourlyAutoRecorder {
             audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
         }
 
-        // 날짜 포맷 (YYYY-MM-DD)
-        const dateString = startTime.toISOString().split('T')[0];
+        // 날짜 포맷 (로컬 현지 시각 YYYY-MM-DD - 타임존 오류 방지)
+        const year = startTime.getFullYear();
+        const month = String(startTime.getMonth() + 1).padStart(2, '0');
+        const day = String(startTime.getDate()).padStart(2, '0');
+        const dateString = `${year}-${month}-${day}`;
         
         // 시간대 포맷 (HH:MM - HH:MM)
         const formatTime = (d) => d.toTimeString().substring(0, 5);

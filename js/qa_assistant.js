@@ -32,8 +32,8 @@ class LifeLogQAAssistant {
 
         // 검색 필터링
         const matchedItems = logs.filter(log => {
-            const dateStr = log.dateString;
-            const textContent = (log.summary + " " + log.rawText + " " + log.timeRange).toLowerCase();
+            const dateStr = log.dateString || '';
+            const textContent = ((log.summary || '') + ' ' + (log.rawText || '') + ' ' + (log.timeRange || '')).toLowerCase();
 
             // "오늘", "어제" 키워드 처리
             const today = new Date().toISOString().split('T')[0];
@@ -95,15 +95,20 @@ class LifeLogQAAssistant {
         utterance.rate = 1.0;
         utterance.pitch = 1.0;
 
+        // GC 회수 방지를 위해 클래스 인스턴스에 유지
+        this.currentUtterance = utterance;
+
         utterance.onstart = () => {
             if (onStart) onStart();
         };
 
         utterance.onend = () => {
+            this.currentUtterance = null;
             if (onEnd) onEnd();
         };
 
         utterance.onerror = () => {
+            this.currentUtterance = null;
             if (onEnd) onEnd();
         };
 
@@ -113,6 +118,7 @@ class LifeLogQAAssistant {
     stopSpeaking() {
         if (this.synth) {
             this.synth.cancel();
+            this.currentUtterance = null;
         }
     }
 
