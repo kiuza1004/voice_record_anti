@@ -100,7 +100,27 @@ class STTSummarizer {
             return;
         }
 
-        // 5. 중복 없이 독립된 새 문장이면 버퍼에 추가
+        // 5. 단어 부분 겹침 병합 처리 (예: "오늘 날씨가" + "날씨가 좋습니다" -> "오늘 날씨가 좋습니다")
+        const lastWords = lastText.split(' ');
+        const trimmedWords = trimmed.split(' ');
+
+        let overlapMatchCount = 0;
+        for (let i = 0; i < lastWords.length; i++) {
+            const lastSub = lastWords.slice(i).join(' ');
+            const trimSub = trimmedWords.slice(0, lastWords.length - i).join(' ');
+            if (lastSub && lastSub === trimSub) {
+                overlapMatchCount = lastWords.length - i;
+                break;
+            }
+        }
+
+        if (overlapMatchCount > 0) {
+            const merged = lastWords.slice(0, lastWords.length - overlapMatchCount).concat(trimmedWords).join(' ');
+            this.transcriptBuffer[lastIdx] = merged;
+            return;
+        }
+
+        // 6. 중복 없이 독립된 새 문장이면 버퍼에 추가
         this.transcriptBuffer.push(trimmed);
     }
 
