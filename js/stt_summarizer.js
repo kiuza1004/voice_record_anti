@@ -48,6 +48,12 @@ class STTSummarizer {
         };
 
         this.recognition.onend = () => {
+            // 외부에서 비동기 종료를 대기 중이면 resolve 호출
+            if (this.onStopResolve) {
+                this.onStopResolve();
+                this.onStopResolve = null;
+            }
+
             // 녹음 중 상태인데 수동으로 끝난 경우 자동 재연결
             if (this.isRecognizing) {
                 try {
@@ -139,11 +145,22 @@ class STTSummarizer {
         }
     }
 
-    stopListening() {
+    async stopListening() {
         this.isRecognizing = false;
         if (this.recognition) {
             try {
-                this.recognition.stop();
+                // 비동기적으로 onend 이벤트가 호출될 때까지 대기하여 마지막 버퍼까지 완전히 수집함
+                await new Promise((resolve) => {
+                    this.onStopResolve = resolve;
+                    this.recognition.stop();
+                    // 만일 브라우저 버그로 1.5초 내에 onend가 오지 않으면 안전하게 resolve 강제 실행
+                    setTimeout(() => {
+                        if (this.onStopResolve) {
+                            this.onStopResolve();
+                            this.onStopResolve = null;
+                        }
+                    }, 1500);
+                });
             } catch (e) {
                 console.error('STT 중지 에러:', e);
             }

@@ -80,8 +80,8 @@ class HourlyAutoRecorder {
         const endTime = new Date();
         const startTime = this.startTime || new Date(endTime.getTime() - (this.intervalSeconds * 1000));
 
-        // STT 전체 텍스트 일괄 획득
-        const rawText = window.sttSummarizer.getBufferedText();
+        // STT 전체 텍스트 일괄 획득 (비동기로 마지막 버퍼 수집이 완료될 때까지 완벽 대기)
+        const rawText = await window.sttSummarizer.stopListening();
         
         // 녹음 완료 시점에 최종 전체 텍스트를 화면에 출력
         const liveBox = document.getElementById('live-transcript');
@@ -156,15 +156,13 @@ class HourlyAutoRecorder {
         clearInterval(this.timerId);
         this.timerId = null;
 
-        // 현재 시점까지의 녹음 저장
+        // 현재 시점까지의 녹음 저장 (내부에서 STT stopListening 및 오디오 저장 모두 처리)
         await this.processAndSaveCurrentSlot();
 
         // 마이크 트랙 정지
         if (this.mediaRecorder && this.mediaRecorder.stream) {
             this.mediaRecorder.stream.getTracks().forEach(track => track.stop());
         }
-
-        window.sttSummarizer.stopListening();
 
         if (this.onStatusChange) this.onStatusChange(false);
     }
